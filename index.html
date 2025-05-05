@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Android Architecture Explorer</title>
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- GSAP for animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00ff88;
+            --secondary: #0095ff;
+            --accent: #ff00aa;
+            --dark: #0a0a0a;
+            --darker: #050505;
+            --light: #ffffff;
+            --gray: #222222;
+            --highlight: rgba(0, 255, 136, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--dark);
+            color: var(--light);
+            overflow-x: hidden;
+            overscroll-behavior: none;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 200;
+            background: rgba(10, 10, 10, 0.5);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            pointer-events: auto;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            pointer-events: auto;
+        }
+
+        .nav-links a {
+            color: var(--light);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a:hover {
+            opacity: 1;
+            color: var(--primary);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--primary);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .intro-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 600px;
+            text-align: center;
+            z-index: 150;
+            pointer-events: auto;
+            background: rgba(10, 10, 10, 0.7);
+            backdrop-filter: blur(20px);
+            padding: 3rem;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .intro-panel h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-text-fill-color: transparent;
+        }
+
+        .intro-panel p {
+            font-size: 1rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+            opacity: 0.8;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.8rem 2rem;
+            background: var(--primary);
+            color: var(--dark);
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            margin-left: 1rem;
+        }
+
+        .btn-outline:hover {
+            background: var(--primary);
+            color: var(--dark);
+        }
+
+        .layer-info-panel {
+            position: fixed;
+            bottom: -400px;
+            left: 0;
+            width: 100%;
+            background: rgba(10, 10, 10, 0.9);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            z-index: 300;
+            transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+            pointer-events: auto;
+        }
+
+        .layer-info-panel.active {
+            transform: translateY(-400px);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .panel-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .close-panel {
+            background: none;
+            border: none;
+            color: var(--light);
+            font-size: 1.2rem;
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+
+        .close-panel:hover {
+            opacity: 1;
+        }
+
+        .panel-content {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .panel-image {
+            flex: 1;
+            max-width: 400px;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .panel-text {
+            flex: 2;
+        }
+
+        .panel-text p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+            opacity: 0.9;
+        }
+
+        .components-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .component-item {
+            background: rgba(0, 149, 255, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            border: 1px solid rgba(0, 149, 255, 0.3);
+        }
+
+        .layer-selector {
+            position: fixed;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            z-index: 200;
+            pointer-events: auto;
+        }
+
+        .layer-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .layer-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--primary);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .layer-btn:hover {
+            transform: translateX(-10px);
+            border-color: var(--primary);
+        }
+
+        .layer-btn.active {
+            background: var(--primary);
+            color: var(--dark);
+            transform: translateX(-10px);
+        }
+
+        .layer-btn.active::before {
+            opacity: 1;
+        }
+
+        .layer-btn i {
+            position: relative;
+            z-index: 2;
+        }
+
+        .tooltip {
+            position: absolute;
+            right: 60px;
+            background: rgba(10, 10, 10, 0.9);
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .layer-btn:hover .tooltip {
+            opacity: 1;
+        }
+
+        footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 1rem;
+            text-align: center;
+            font-size: 0.8rem;
+            opacity: 0.5;
+            z-index: 200;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .intro-panel {
+                width: 90%;
+                padding: 2rem;
+            }
+            
+            .intro-panel h1 {
+                font-size: 1.8rem;
+            }
+            
+            .panel-content {
+                flex-direction: column;
+            }
+            
+            .panel-image {
+                max-width: 100%;
+            }
+            
+            .layer-selector {
+                right: 1rem;
+            }
+            
+            .layer-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    
+    <div class="ui-overlay">
+        <header>
+            <div class="logo">AndroidArch</div>
+            <div class="nav-links">
+                <!-- <a href="#">Home</a> -->
+                <!-- <a href="#">Documentation</a>
+                <a href="#">About</a>
+                <a href="#">Contact</a> -->
+                <a href="https://github.com/hkhearts" target="_blank">Github</a>
+                <a href="https://www.figma.com/design/q4TVxSKvdWfPK5DCfhEEWg/AndroidArchitecture?node-id=0-1&t=lieaGxR8F8tWfNih-1" target="_blank">Figma</a>
+            </div>
+        </header>
+        
+        <div class="intro-panel">
+            <h1>Android Architecture Explorer</h1>
+            <p>Explore the layered architecture of Android OS in immersive 3D. Click on each layer to reveal detailed information about its components and functionality.</p>
+            <button id="start-exploring" class="btn">Start Exploring</button>
+            <button class="btn btn-outline">Learn More</button>
+        </div>
+        
+        <div class="layer-selector">
+            <div class="layer-btn" data-layer="applications">
+                <i class="fas fa-mobile-alt"></i>
+                <span class="tooltip">Applications</span>
+            </div>
+            <div class="layer-btn" data-layer="framework">
+                <i class="fas fa-cogs"></i>
+                <span class="tooltip">Android Framework</span>
+            </div>
+            <div class="layer-btn" data-layer="libraries">
+                <i class="fas fa-code"></i>
+                <span class="tooltip">Native Libraries</span>
+            </div>
+            <div class="layer-btn" data-layer="hal">
+                <i class="fas fa-layer-group"></i>
+                <span class="tooltip">HAL</span>
+            </div>
+            <div class="layer-btn" data-layer="kernel">
+                <i class="fab fa-linux"></i>
+                <span class="tooltip">Linux Kernel</span>
+            </div>
+            <div class="layer-btn" data-layer="hardware">
+                <i class="fas fa-microchip"></i>
+                <span class="tooltip">Hardware</span>
+            </div>
+        </div>
+        
+        <div class="layer-info-panel">
+            <div class="panel-header">
+                <h2 class="panel-title" id="panel-layer-title">Applications Layer</h2>
+                <button class="close-panel"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="panel-content">
+                <div class="panel-image">
+                    <img id="layer-image" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgNDAwIDMwMCI+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxZDFkMWQiLz48dGV4dCB4PSIyMDAiIHk9IjE1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UHJldmlldyBJbWFnZTwvdGV4dD48L3N2Zz4=" alt="Layer visualization">
+                </div>
+                <div class="panel-text">
+                    <p id="layer-description">The Applications layer is the topmost layer of the Android architecture where all the applications like contacts, browser, games, etc. are installed. This is the layer that users directly interact with.</p>
+                    <div class="components-list" id="components-list">
+                        <span class="component-item">System Apps</span>
+                        <span class="component-item">User Apps</span>
+                        <span class="component-item">Play Store</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            © 2023 Android Architecture Explorer | Interactive 3D Visualization
+        </footer>
+    </div>
+
+    <script>
+        // Scene setup
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a0a);
+        
+        // Camera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 10;
+        
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+        
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+        
+        const pointLight = new THREE.PointLight(0x00ff88, 1, 100);
+        pointLight.position.set(5, 5, 5);
+        scene.add(pointLight);
+        
+        // Phone model geometry
+        const phoneWidth = 4;
+        const phoneHeight = 8;
+        const phoneDepth = 0.5;
+        const phoneGeometry = new THREE.BoxGeometry(phoneWidth, phoneHeight, phoneDepth);
+        const phoneMaterial = new THREE.MeshPhongMaterial({ 
+            color: 0x111111,
+            specular: 0x222222,
+            shininess: 30,
+            transparent: true,
+            opacity: 0.8
+        });
+        const phone = new THREE.Mesh(phoneGeometry, phoneMaterial);
+        scene.add(phone);
+        
+        // Create layers
+        const layers = {
+            applications: { height: 0.8, color: 0x3a86ff, position: 2.2, components: ["System Apps", "User Apps", "Play Store"] },
+            framework: { height: 0.6, color: 0x8338ec, position: 1.5, components: ["ART VM", "Android Runtime", "JNI", "Activity Manager"] },
+            libraries: { height: 0.5, color: 0xff006e, position: 0.8, components: ["SQLite", "OpenGL", "WebKit", "Media Framework"] },
+            hal: { height: 0.4, color: 0xfb5607, position: 0.2, components: ["Camera HAL", "Audio HAL", "Sensors HAL"] },
+            kernel: { height: 0.3, color: 0xffbe0b, position: -0.3, components: ["Bionic", "Process Management", "Memory Management"] },
+            hardware: { height: 0.5, color: 0xffffff, position: -0.9, components: ["CPU", "GPU", "RAM", "Storage"] }
+        };
+        
+        const layerMeshes = {};
+        const layerDescriptions = {
+            applications: "The Applications layer is the topmost layer where all apps like contacts, browser, and games are installed. This is the layer users directly interact with.",
+            framework: "The Android Framework provides higher-level services to applications in the form of Java classes. It includes components like Activity Manager and Content Providers.",
+            libraries: "The Native Libraries layer contains C/C++ libraries that provide core Android features like SQLite database, OpenGL graphics, and WebKit browser engine.",
+            hal: "The Hardware Abstraction Layer (HAL) provides standard interfaces that expose device hardware capabilities to the higher-level Java API framework.",
+            kernel: "The Linux Kernel provides core system services like process management, memory management, and security. Android relies on Linux for these fundamental OS functions.",
+            hardware: "The Hardware layer represents the physical components of the device including processors, memory, displays, and other hardware modules."
+        };
+        
+        // Create layer images (in a real app, these would be your actual layer diagrams)
+        const layerImages = {
+            applications: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgNDAwIDMwMCI+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxZDFkMWQiLz48dGV4dCB4PSIyMDAiIHk9IjE1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+QXBwbGljYXRpb25zIExheWVyPC90ZXh0Pjwvc3ZnPg==",
+            framework: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgNDAwIDMwMCI+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxZDFkMWQiLz48dGV4dCB4PSIyMDAiIHk9IjE1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+RnJhbWV3b3JrIExheWVyPC90ZXh0Pjwvc3ZnPg==",
+            libraries: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgNDAwIDMwMCI+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxZDFkMWQiLz48dGV4dCB4PSIyMDAiIHk9IjE1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TmF0aXZlIExpYnJhcmllczwvdGV4dD48L3N2Zz4=",
+            hal: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgNDAwIDMwMCI+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxZDFkMWQiLz48dGV4dCB4PSIyMDAiIHk9IjE1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SGFyZHdhcmUgQWJzdHJhY3Rpb24gTGF5ZXI8L3RleHQ+PC9zdmc+",
+            kernel: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgNDAwIDMwMCI+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxZDFkMWQiLz48dGV4dCB4PSIyMDAiIHk9IjE1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TGludXggS2VybmVsPC90ZXh0Pjwvc3ZnPg==",
+            hardware: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMzAwIiB2aWV3Qm94PSIwIDAgNDAwIDMwMCI+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiMxZDFkMWQiLz48dGV4dCB4PSIyMDAiIHk9IjE1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjI0IiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+SGFyZHdhcmUgTGF5ZXI8L3RleHQ+PC9zdmc+"
+        };
+        
+        // Create layer meshes
+        Object.keys(layers).forEach((layerName, index) => {
+            const layer = layers[layerName];
+            const layerGeometry = new THREE.BoxGeometry(phoneWidth * 0.98, phoneHeight * 0.98, layer.height);
+            const layerMaterial = new THREE.MeshPhongMaterial({ 
+                color: layer.color,
+                transparent: true,
+                opacity: 0.9,
+                emissive: layer.color,
+                emissiveIntensity: 0.2,
+                side: THREE.DoubleSide
+            });
+            
+            const layerMesh = new THREE.Mesh(layerGeometry, layerMaterial);
+            layerMesh.position.z = layer.position;
+            layerMesh.userData.layerName = layerName;
+            layerMesh.userData.originalPosition = layer.position;
+            layerMesh.userData.originalColor = layer.color;
+            
+            // Add outline
+            const edges = new THREE.EdgesGeometry(layerGeometry);
+            const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 }));
+            layerMesh.add(line);
+            
+            phone.add(layerMesh);
+            layerMeshes[layerName] = layerMesh;
+        });
+        
+        // Raycaster for interaction
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let currentLayer = null;
+        
+        // Animation variables
+        let isAnimating = false;
+        let targetRotationY = 0;
+        let autoRotate = true;
+        
+        // GSAP animations
+        const infoPanel = document.querySelector('.layer-info-panel');
+        const panelTitle = document.getElementById('panel-layer-title');
+        const layerImage = document.getElementById('layer-image');
+        const layerDescription = document.getElementById('layer-description');
+        const componentsList = document.getElementById('components-list');
+        
+        // Event listeners
+        window.addEventListener('resize', onWindowResize);
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('click', onClick);
+        document.getElementById('start-exploring').addEventListener('click', startExploring);
+        document.querySelector('.close-panel').addEventListener('click', closePanel);
+        
+        // Layer selector buttons
+        document.querySelectorAll('.layer-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const layerName = btn.dataset.layer;
+                highlightLayer(layerName);
+            });
+        });
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            if (!isAnimating) {
+                targetRotationY = mouse.x * Math.PI * 0.1;
+            }
+        }
+        
+        function onClick(event) {
+            if (event.target.closest('.ui-overlay *:not(.layer-btn)')) return;
+            
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(phone.children);
+            
+            if (intersects.length > 0) {
+                const layerMesh = intersects[0].object;
+                const layerName = layerMesh.userData.layerName;
+                highlightLayer(layerName);
+            }
+        }
+        
+        function highlightLayer(layerName) {
+            if (isAnimating) return;
+            
+            // Reset all layers
+            Object.values(layerMeshes).forEach(mesh => {
+                gsap.to(mesh.position, { 
+                    z: mesh.userData.originalPosition,
+                    duration: 0.5
+                });
+                gsap.to(mesh.material, {
+                    color: mesh.userData.originalColor,
+                    duration: 0.5
+                });
+            });
+            
+            // Highlight selected layer
+            const selectedLayer = layerMeshes[layerName];
+            currentLayer = layerName;
+            
+            gsap.to(selectedLayer.position, {
+                z: selectedLayer.userData.originalPosition + 0.5,
+                duration: 0.5
+            });
+            
+            gsap.to(selectedLayer.material, {
+                color: 0x00ff88,
+                duration: 0.5
+            });
+            
+            // Rotate phone to face the layer
+            const layerIndex = Object.keys(layers).indexOf(layerName);
+            const targetAngle = (layerIndex / Object.keys(layers).length) * Math.PI * 2;
+            
+            isAnimating = true;
+            autoRotate = false;
+            
+            gsap.to(phone.rotation, {
+                y: targetAngle,
+                duration: 1,
+                ease: "power2.out",
+                onComplete: () => {
+                    isAnimating = false;
+                    setTimeout(() => autoRotate = true, 5000);
+                }
+            });
+            
+            // Show info panel
+            showLayerInfo(layerName);
+        }
+        
+        function showLayerInfo(layerName) {
+            panelTitle.textContent = `${layerName.charAt(0).toUpperCase() + layerName.slice(1)} Layer`;
+            layerImage.src = layerImages[layerName];
+            layerDescription.textContent = layerDescriptions[layerName];
+            
+            // Update components list
+            componentsList.innerHTML = '';
+            layers[layerName].components.forEach(component => {
+                const item = document.createElement('span');
+                item.className = 'component-item';
+                item.textContent = component;
+                componentsList.appendChild(item);
+            });
+            
+            // Animate panel
+            infoPanel.classList.add('active');
+        }
+        
+        function closePanel() {
+            infoPanel.classList.remove('active');
+            
+            // Reset highlighted layer
+            if (currentLayer) {
+                const layerMesh = layerMeshes[currentLayer];
+                gsap.to(layerMesh.position, { 
+                    z: layerMesh.userData.originalPosition,
+                    duration: 0.5
+                });
+                gsap.to(layerMesh.material, {
+                    color: layerMesh.userData.originalColor,
+                    duration: 0.5
+                });
+                currentLayer = null;
+            }
+        }
+        
+        function startExploring() {
+            gsap.to('.intro-panel', {
+                opacity: 0,
+                duration: 0.5,
+                onComplete: () => {
+                    document.querySelector('.intro-panel').style.display = 'none';
+                }
+            });
+        }
+        
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Auto-rotate when not interacting
+            if (autoRotate && !isAnimating) {
+                targetRotationY += 0.002;
+            }
+            
+            // Smooth rotation
+            phone.rotation.y += (targetRotationY - phone.rotation.y) * 0.05;
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    </script>
+</body>
+</html>
